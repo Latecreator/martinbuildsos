@@ -8,7 +8,8 @@
             font-family: sans-serif; 
             padding: 40px;
         }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        /* Changed to 1fr so the single card spans the whole width */
+        .stats-grid { display: grid; grid-template-columns: 1fr; max-width: 400px; margin-top: 20px; }
         .stat-card { 
             background: rgba(255,255,255,0.05); 
             padding: 20px; 
@@ -28,14 +29,9 @@
             <h3>Active Tools</h3>
             <p id="tool-count" class="stat-number">...</p>
         </div>
-        <div class="stat-card">
-            <h3>Revenue Goal</h3>
-            <p class="stat-number">$5,000 / mo</p>
-        </div>
     </div>
 
     <script>
-        // CONFIG (Ensure this matches your index.html settings)
         const GITHUB_CONFIG = {
             username: 'Latecreator', 
             repo: 'martinbuildsos',
@@ -44,14 +40,13 @@
 
         async function updateDashboardStats() {
             try {
+                // Fetching content from GitHub API
                 const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.folder}`);
                 const files = await response.json();
                 
                 if (Array.isArray(files)) {
-                    // This is the MAGIC LINE: it filters for only .html files
+                    // Filters for .html files to ensure placeholder files aren't counted
                     const activeTools = files.filter(file => file.name.endsWith('.html')).length;
-                    
-                    // Update the number on the screen
                     document.getElementById('tool-count').innerText = activeTools;
                 }
             } catch (err) {
@@ -59,8 +54,6 @@
                 document.getElementById('tool-count').innerText = "!";
             }
         }
-
-        // Run the count when the dashboard loads
         updateDashboardStats();
     </script>
 </body>
