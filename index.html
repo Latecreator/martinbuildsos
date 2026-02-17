@@ -26,7 +26,6 @@
 
         .os-container { display: flex; height: 100vh; }
 
-        /* LEFT SIDEBAR */
         .sidebar {
             width: 240px; flex-shrink: 0;
             background: var(--sidebar-bg);
@@ -55,11 +54,9 @@
             margin-bottom: 25px;
         }
 
-        /* MIDDLE VIEWPORT */
         .viewport { flex-grow: 1; background: rgba(0, 0, 0, 0.2); position: relative; }
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* RIGHT NOTES PANEL (COLLAPSIBLE) */
         .notes-panel {
             width: 320px; flex-shrink: 0;
             background: rgba(15, 23, 42, 0.9);
@@ -86,7 +83,6 @@
 
         #csv-table { width: 100%; border-collapse: collapse; color: white; font-size: 0.8rem; }
         #csv-table td { border: 1px solid #334155; padding: 8px; outline: none; }
-        #csv-table td:focus { background: rgba(59, 130, 246, 0.2); }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
 
@@ -111,14 +107,11 @@
     <div class="os-container">
         <aside class="sidebar">
             <div class="logo">MARTIN<span>BUILDS</span> OS</div>
-            
             <button class="nav-btn home-btn" onclick="loadApp('dashboard.html')">🏠 HOME DASHBOARD</button>
-
             <nav id="menu">
                 <div class="section-label">CONTROLS</div>
                 <button class="nav-btn" style="border: 1px solid var(--accent-blue);" onclick="toggleNotes()">↔️ Toggle Notes Panel</button>
-
-                <div class="section-label">TOOLS</div>
+                <div class="section-label" id="tools-header">TOOLS</div>
                 <div class="section-label">RESOURCES</div>
                 <button class="nav-btn" onclick="loadApp('https://notion.so')">📝 Notion Workspace</button>
             </nav>
@@ -136,19 +129,13 @@
                     <option value="csv">CSV Mode</option>
                 </select>
             </div>
-            
             <textarea id="note-area" placeholder="Jot down notes..."></textarea>
-            
-            <div id="csv-container" style="display:none;">
-                <table id="csv-table"></table>
-            </div>
-            
+            <div id="csv-container" style="display:none;"><table id="csv-table"></table></div>
             <div class="btn-group">
                 <button class="action-btn export-btn" onclick="exportData()">💾 EXPORT</button>
                 <button class="action-btn import-btn" onclick="triggerImport()">📂 IMPORT</button>
                 <button class="action-btn reset-btn" onclick="resetNotes()">🗑️ RESET</button>
             </div>
-            
             <input type="file" id="file-selector" style="display:none" accept=".txt,.csv">
         </aside>
     </div>
@@ -156,77 +143,60 @@
     <script>
         // --- 1. CONFIGURATION ---
         const GITHUB_CONFIG = {
-            username: 'LATECREATOR', // <--- UPDATE THIS
-            repo: 'martinbuilds-os',
+            username: 'Latecreator', 
+            repo: 'martinbuildsos',
             folder: 'tools'
         };
 
         // --- 2. DYNAMIC MENU SYNC ---
         async function autoUpdateMenu() {
             try {
+                // Fetching from GitHub API to find filenames
                 const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.folder}`);
                 const files = await response.json();
-                
-                const toolsLabel = Array.from(document.querySelectorAll('.section-label'))
-                                        .find(el => el.innerText === 'TOOLS');
+                const toolsHeader = document.getElementById('tools-header');
 
-                if (!toolsLabel || !Array.isArray(files)) return;
-
-                // Loop through files in reverse so they appear in correct order after the label
-                files.reverse().forEach(file => {
-                    if (file.name.endsWith('.html')) {
-                        const btn = document.createElement('button');
-                        btn.className = 'nav-btn';
-                        const displayName = file.name.replace('.html', '').replace(/-/g, ' ');
-                        btn.innerHTML = `🛠️ ${displayName}`;
-                        
-                        // Load via raw.githack.com to ensure HTML renders in iframe
-                        btn.onclick = () => loadApp(`https://raw.githack.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/main/${GITHUB_CONFIG.folder}/${file.name}`);
-                        
-                        toolsLabel.after(btn);
-                    }
-                });
+                if (Array.isArray(files)) {
+                    files.forEach(file => {
+                        if (file.name.endsWith('.html')) {
+                            const btn = document.createElement('button');
+                            btn.className = 'nav-btn';
+                            const displayName = file.name.replace('.html', '').replace(/-/g, ' ');
+                            btn.innerHTML = `🛠️ ${displayName}`;
+                            
+                            // On Vercel, we can load the file relatively from the /tools folder
+                            btn.onclick = () => loadApp(`./tools/${file.name}`);
+                            
+                            toolsHeader.after(btn);
+                        }
+                    });
+                }
             } catch (err) {
-                console.error("Auto-sync failed. Check username/repo/folder.", err);
+                console.error("Auto-sync error:", err);
             }
         }
 
-        function loadApp(url) { 
-            document.getElementById('stage').src = url; 
-        }
-
-        // Initialize sync
+        function loadApp(url) { document.getElementById('stage').src = url; }
         autoUpdateMenu();
 
         // --- 3. UI CONTROLS ---
-        function toggleNotes() {
-            document.getElementById('notes-panel').classList.toggle('collapsed');
-        }
-
+        function toggleNotes() { document.getElementById('notes-panel').classList.toggle('collapsed'); }
         function toggleView() {
             const view = document.getElementById('view-type').value;
             const txtArea = document.getElementById('note-area');
             const csvCont = document.getElementById('csv-container');
-            
-            if (view === 'csv') {
-                txtArea.style.display = 'none';
-                csvCont.style.display = 'block';
-                renderCSV(txtArea.value);
-            } else {
-                txtArea.style.display = 'block';
-                csvCont.style.display = 'none';
-            }
+            txtArea.style.display = view === 'csv' ? 'none' : 'block';
+            csvCont.style.display = view === 'csv' ? 'block' : 'none';
+            if (view === 'csv') renderCSV(txtArea.value);
         }
 
         function renderCSV(rawText) {
             const table = document.getElementById('csv-table');
             table.innerHTML = "";
             if (!rawText.trim()) return;
-            const rows = rawText.split("\n");
-            rows.forEach((row) => {
+            rawText.split("\n").forEach(row => {
                 const tr = document.createElement('tr');
-                const cols = row.split(",");
-                cols.forEach((col) => {
+                row.split(",").forEach(col => {
                     const td = document.createElement('td');
                     td.contentEditable = "true";
                     td.innerText = col.trim();
@@ -236,39 +206,27 @@
             });
         }
 
-        // --- 4. DATA HANDLING (IMPORT/EXPORT/RESET) ---
-        function triggerImport() {
-            document.getElementById('file-selector').click();
-        }
-
+        // --- 4. DATA HANDLING ---
+        function triggerImport() { document.getElementById('file-selector').click(); }
         document.getElementById('file-selector').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                document.getElementById('note-area').value = content;
-                if (document.getElementById('view-type').value === 'csv') renderCSV(content);
+            reader.onload = (e) => {
+                document.getElementById('note-area').value = e.target.result;
+                if (document.getElementById('view-type').value === 'csv') renderCSV(e.target.result);
             };
             reader.readAsText(file);
         });
 
         function exportData() {
             const view = document.getElementById('view-type').value;
-            let content = "";
-            let extension = "txt";
-
-            if (view === 'csv') {
-                extension = "csv";
-                const rows = Array.from(document.querySelectorAll('#csv-table tr'));
-                content = rows.map(row => Array.from(row.querySelectorAll('td')).map(td => td.innerText).join(",")).join("\n");
-            } else {
-                content = document.getElementById('note-area').value;
-            }
-
+            let content = view === 'csv' ? 
+                Array.from(document.querySelectorAll('#csv-table tr')).map(r => Array.from(r.querySelectorAll('td')).map(t => t.innerText).join(",")).join("\n") : 
+                document.getElementById('note-area').value;
             const blob = new Blob([content], { type: 'text/plain' });
             const anchor = document.createElement('a');
-            anchor.download = `martinbuilds-data.${extension}`;
+            anchor.download = `martinbuilds-data.${view === 'csv' ? 'csv' : 'txt'}`;
             anchor.href = window.URL.createObjectURL(blob);
             anchor.click();
         }
@@ -284,9 +242,7 @@
         // --- 5. PERSISTENCE ---
         const noteArea = document.getElementById('note-area');
         noteArea.value = localStorage.getItem('mb_notes') || "";
-        noteArea.addEventListener('input', () => {
-            localStorage.setItem('mb_notes', noteArea.value);
-        });
+        noteArea.addEventListener('input', () => localStorage.setItem('mb_notes', noteArea.value));
     </script>
 </body>
 </html>
