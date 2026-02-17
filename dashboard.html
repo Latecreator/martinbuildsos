@@ -3,7 +3,7 @@
 <head>
     <style>
         body { 
-            background: transparent; /* Lets the OS grid show through */
+            background: transparent; 
             color: white; 
             font-family: sans-serif; 
             padding: 40px;
@@ -16,6 +16,7 @@
             border: 1px solid rgba(255,255,255,0.1);
         }
         h1 { color: #3b82f6; }
+        .stat-number { font-size: 2rem; margin: 0; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -25,12 +26,42 @@
     <div class="stats-grid">
         <div class="stat-card">
             <h3>Active Tools</h3>
-            <p style="font-size: 2rem;">2</p>
+            <p id="tool-count" class="stat-number">...</p>
         </div>
         <div class="stat-card">
             <h3>Revenue Goal</h3>
-            <p style="font-size: 2rem;">$5,000 / mo</p>
+            <p class="stat-number">$5,000 / mo</p>
         </div>
     </div>
+
+    <script>
+        // CONFIG (Ensure this matches your index.html settings)
+        const GITHUB_CONFIG = {
+            username: 'Latecreator', 
+            repo: 'martinbuildsos',
+            folder: 'tools'
+        };
+
+        async function updateDashboardStats() {
+            try {
+                const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.folder}`);
+                const files = await response.json();
+                
+                if (Array.isArray(files)) {
+                    // This is the MAGIC LINE: it filters for only .html files
+                    const activeTools = files.filter(file => file.name.endsWith('.html')).length;
+                    
+                    // Update the number on the screen
+                    document.getElementById('tool-count').innerText = activeTools;
+                }
+            } catch (err) {
+                console.error("Dashboard sync error:", err);
+                document.getElementById('tool-count').innerText = "!";
+            }
+        }
+
+        // Run the count when the dashboard loads
+        updateDashboardStats();
+    </script>
 </body>
 </html>
